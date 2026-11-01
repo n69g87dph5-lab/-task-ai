@@ -1,40 +1,149 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Task AI</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TASK AI</title>
 <style>
-body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:20px;background:#f5f5f5}
-textarea{width:100%;height:130px;font-size:16px;box-sizing:border-box;padding:12px}
-button{padding:12px 24px;background:#222;color:white;border:0;border-radius:8px;margin-top:12px}
-.card{background:white;padding:20px;border-radius:12px;margin-top:20px}
+body{font-family:system-ui,sans-serif;background:#f4f5f7;color:#222;max-width:700px;margin:25px auto;padding:16px}
+h1{margin-bottom:3px}
+.sub{color:#777;font-size:13px}
+.card{background:white;padding:18px;border-radius:14px;margin:15px 0}
+input,select{width:100%;box-sizing:border-box;padding:12px;margin:6px 0 12px;border:1px solid #ddd;border-radius:8px;font-size:16px}
+button{padding:11px 15px;border:0;border-radius:8px;background:#222;color:white;font-size:14px}
+button.secondary{background:#777}
+button.done{background:#287c54}
+.task{border-top:1px solid #eee;padding:14px 0}
+.task strong{font-size:16px}
+.meta{font-size:12px;color:#777;margin:7px 0}
+.tag{display:inline-block;background:#eee;padding:4px 8px;border-radius:5px;font-size:12px;margin-right:4px}
+.active{background:#e5f4e9}
+.recommend{border-left:4px solid #287c54;padding-left:12px;margin:12px 0}
 </style>
 </head>
 <body>
-<h1>Task AI</h1>
-<p>仕事を入力して、次の一手を決める。</p>
-<textarea id="task" placeholder="仕事の内容を入力"></textarea>
-<br>
-<button onclick="organize()">整理する</button>
-<div id="result" class="card" hidden></div>
+<h1>TASK AI</h1>
+<div class="sub">YOUR PERSONAL DECISION ENGINE</div>
+
+<div class="card">
+<h3>仕事を登録する</h3>
+<input id="name" placeholder="仕事の名前・内容">
+<label>期限</label>
+<input id="date" type="date">
+<label>重要度</label>
+<select id="importance">
+<option value="1">低い</option>
+<option value="2" selected>普通</option>
+<option value="3">高い</option>
+</select>
+<label>緊急度</label>
+<select id="urgency">
+<option value="1">低い</option>
+<option value="2" selected>普通</option>
+<option value="3">高い</option>
+</select>
+<label>不確実性</label>
+<select id="uncertainty">
+<option value="1">低い（見通しあり）</option>
+<option value="2" selected>普通</option>
+<option value="3">高い（よく分からない）</option>
+</select>
+<button onclick="addTask()">仕事を追加</button>
+</div>
+
+<div class="card">
+<h3>今やるべき仕事</h3>
+<div id="recommend"></div>
+</div>
+
+<div class="card">
+<h3>仕事一覧</h3>
+<div id="tasks"></div>
+</div>
+
 <script>
-function organize(){
- const t=document.getElementById('task').value.trim();
- if(!t)return alert('仕事を入力しろ');
- const r=document.getElementById('result');
- r.hidden=false;
- r.innerHTML='';
- const h=document.createElement('h3');
- h.textContent='状況';
- const p=document.createElement('p');
- p.textContent=t;
- const n=document.createElement('h3');
- n.textContent='次の一手';
- const a=document.createElement('p');
- a.textContent='まず期限・分かっている事実・未確認事項を書き出せ。';
- r.append(h,p,n,a);
+let tasks=JSON.parse(localStorage.getItem('tasks')||'[]');
+
+function save(){
+ localStorage.setItem('tasks',JSON.stringify(tasks));
+ render();
 }
+
+function addTask(){
+ const name=document.getElementById('name').value.trim();
+ if(!name)return alert('仕事の名前を入力しろ');
+ tasks.push({
+ id:Date.now(),
+ name,
+ date:document.getElementById('date').value,
+ importance:+document.getElementById('importance').value,
+ urgency:+document.getElementById('urgency').value,
+ uncertainty:+document.getElementById('uncertainty').value,
+ active:false
+ });
+ document.getElementById('name').value='';
+ save();
+}
+
+function score(t){
+ const today=new Date();today.setHours(0,0,0,0);
+ let days=999;
+ if(t.date){
+  days=Math.ceil((new Date(t.date+'T00:00:00')-today)/86400000);
+ }
+ let deadline=days<=0?5:days<=1?5:days<=3?4:days<=7?3:days<=14?2:1;
+ return t.importance*3+t.urgency*3+t.uncertainty*2+deadline*2;
+}
+
+function activate(id){
+ const t=tasks.find(x=>x.id===id);
+ if(!t)return;
+ const count=tasks.filter(x=>x.active).length;
+ if(!t.active&&count>=2)return alert('同時進行は最大2件だ');
+ t.active=!t.active;
+ save();
+}
+
+function finish(id){
+ tasks=tasks.filter(t=>t.id!==id);
+ save();
+}
+
+function render(){
+ tasks.sort((a,b)=>score(b)-score(a));
+ const active=tasks.filter(t=>t.active);
+ const candidates=tasks.filter(t=>!t.active);
+ const suggested=[...active];
+ for(const t of candidates){
+  if(suggested.length<2)suggested.push(t);
+ }
+ document.getElementById('recommend').innerHTML=
+ suggested.length?suggested.map((t,i)=>
+ `<div class="recommend">
+ <strong>${i+1}. ${escapeHTML(t.name)}</strong>
+ <div class="meta">判断スコア：${score(t)}点 ${t.active?'・実行中':'・推奨候補'}</div>
+ </div>`).join(''):'仕事を登録しろ。判断はそこから始まる。';
+
+ document.getElementById('tasks').innerHTML=
+ tasks.length?tasks.map(t=>
+ `<div class="task">
+ <strong>${escapeHTML(t.name)}</strong>
+ <div class="meta">期限：${t.date||'未設定'} ・ スコア：${score(t)}</div>
+ <span class="tag">重要度 ${t.importance}</span>
+ <span class="tag">緊急度 ${t.urgency}</span>
+ <span class="tag">不確実性 ${t.uncertainty}</span>
+ <p>
+ <button class="${t.active?'secondary':''}" onclick="activate(${t.id})">${t.active?'実行中を解除':'今やる仕事にする'}</button>
+ <button class="done" onclick="finish(${t.id})">完了</button>
+ </p>
+ </div>`).join(''):'登録された仕事はない';
+}
+
+function escapeHTML(s){
+ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+render();
 </script>
 </body>
 </html>
