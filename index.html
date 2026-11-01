@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task AI</title>
+<style>
+body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:20px;background:#f5f5f5}
+textarea{width:100%;height:130px;font-size:16px;box-sizing:border-box;padding:12px}
+button{padding:12px 24px;background:#222;color:white;border:0;border-radius:8px;margin-top:12px}
+.card{background:white;padding:20px;border-radius:12px;margin-top:20px}
+</style>
+</head>
+<body>
+<h1>Task AI</h1>
+<p>仕事を入力して、次の一手を決める。</p>
+<textarea id="task" placeholder="仕事の内容を入力"></textarea>
+<br>
+<button onclick="organize()">整理する</button>
+<div id="result" class="card" hidden></div>
+<script>
+function organize(){
+ const t=document.getElementById('task').value.trim();
+ if(!t)return alert('仕事を入力しろ');
+ const r=document.getElementById('result');
+ r.hidden=false;
+ r.innerHTML='';
+ const h=document.createElement('h3');
+ h.textContent='状況';
+ const p=document.createElement('p');
+ p.textContent=t;
+ const n=document.createElement('h3');
+ n.textContent='次の一手';
+ const a=document.createElement('p');
+ a.textContent='まず期限・分かっている事実・未確認事項を書き出せ。';
+ r.append(h,p,n,a);
+}
+</script>
+</body>
+</html>
