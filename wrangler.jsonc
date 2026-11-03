@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "task-ai-gemini",
+  "main": "./worker.js",
+  "compatibility_date": "2026-11-03",
+  "keep_vars": true,
+  "secrets": {
+    "required": ["GEMINI_API_KEY"]
+  }
+}
